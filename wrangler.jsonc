@@ -41,6 +41,18 @@
 	 * Service Bindings (communicate between multiple Workers)
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
 	 */
-	// "services": [{ "binding": "MY_SERVICE", "service": "my-service" }]
+	// "services": [{ "binding": "MY_SERVICE", "service": "my-service" }],
+	/**
+	 * D1 Database
+	 * https://developers.cloudflare.com/workers/wrangler/configuration/#d1-databases
+	 */
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "cf-react-router-hono-fullstack-template",
+			"database_id": "bd246440-4672-4ea3-8381-88e256a29e5e",
+			"experimental_remote": true
+		}
+	],
 	"upload_source_maps": true
 }
