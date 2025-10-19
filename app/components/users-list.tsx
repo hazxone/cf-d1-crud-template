@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
   Table,
@@ -9,6 +10,17 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
 
 interface User {
   id: number;
@@ -28,12 +40,13 @@ export function UsersList() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   useEffect(() => {
     async function fetchUsers() {
       try {
         const response = await fetch("/api/users");
-        const data = await response.json();
+        const data = await response.json() as { success: boolean; data: User[]; error?: string };
 
         if (data.success) {
           setUsers(data.data);
@@ -49,6 +62,25 @@ export function UsersList() {
 
     fetchUsers();
   }, []);
+
+  const handleDeleteUser = async (userId: number) => {
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "DELETE",
+      });
+      const data = await response.json() as { success: boolean; message?: string; error?: string };
+
+      if (data.success) {
+        // Remove the user from the local state
+        setUsers(users.filter(user => user.id !== userId));
+        setUserToDelete(null);
+      } else {
+        setError(data.error || "Failed to delete user");
+      }
+    } catch (err) {
+      setError("Network error occurred");
+    }
+  };
 
   if (loading) {
     return (
@@ -91,6 +123,7 @@ export function UsersList() {
               <TableHead>Status</TableHead>
               <TableHead>Email Verified</TableHead>
               <TableHead>Joined</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -136,6 +169,39 @@ export function UsersList() {
                   <div className="text-sm text-muted-foreground">
                     {new Date(user.created_at).toLocaleDateString()}
                   </div>
+                </TableCell>
+                <TableCell>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                        onClick={() => setUserToDelete(user)}
+                      >
+                        Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete the user{" "}
+                          <span className="font-semibold">{user.first_name} {user.last_name}</span>
+                          {" "}and all their associated todos.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteUser(user.id)}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Delete User
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </TableCell>
               </TableRow>
             ))}

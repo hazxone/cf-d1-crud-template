@@ -36,8 +36,9 @@ export default function TestPage({ loaderData }: Route.ComponentProps) {
     fetch("/api/test")
       .then(res => res.json())
       .then(data => {
-        if (data.success) {
-          setClientMessage(data.data.message);
+        const responseData = data as { success: boolean; data: { message: string }; error?: string };
+        if (responseData.success) {
+          setClientMessage(responseData.data.message);
         }
       })
       .catch(error => {
