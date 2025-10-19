@@ -382,7 +382,17 @@ app/
 
 ## Example Pages in This Project
 
-- **Home Page** (`/`) - User management dashboard with data table
-- **Test Page** (`/test-page`) - Demonstration page showing all patterns
+- **Home Page** (`/`) - User management dashboard with data table and navigation
+- **Test Page** (`/test-page`) - Demonstration page showing React Router v7 patterns
+- **Todo List** (`/todo`) - Full-featured todo app with local storage and shadcn UI
 
-Both pages include server-side data loading, client-side hydration, and responsive UI components.
+### Page Features:
+- **Home Page**: Server-side data loading, user management interface, navigation links
+- **Test Page**: Server and client data fetching examples, comprehensive UI components
+- **Todo List**: Local state management, localStorage persistence, CRUD operations, task categorization
+
+All pages include responsive design, TypeScript support, and follow React Router v7 conventions.
+
+## Project Management
+
+This project uses **Beads** (bd) for task tracking and dependency management. Run `bd quickstart` to see how to create and manage issues. All development work is tracked with beads for better project organization and AI-supervised workflows.
