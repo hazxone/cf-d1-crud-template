@@ -27,6 +27,30 @@ app.get("/api/users", async (c) => {
 	}
 });
 
+// API endpoint for test page
+app.get("/api/test", async (c) => {
+	try {
+		// Return test data
+		const testData = {
+			message: "Hello from the Hono backend API!",
+			timestamp: new Date().toISOString(),
+			endpoint: "/api/test",
+			method: "GET"
+		};
+
+		return c.json({
+			success: true,
+			data: testData
+		});
+	} catch (error) {
+		console.error("Error in test endpoint:", error);
+		return c.json(
+			{ success: false, error: "Failed to fetch test data" },
+			500
+		);
+	}
+});
+
 app.get("*", (c) => {
 	const requestHandler = createRequestHandler(
 		() => import("virtual:react-router/server-build"),
