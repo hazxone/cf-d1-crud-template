@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Table,
   TableBody,
@@ -9,7 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "~/components/ui/table";
+} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "~/components/ui/alert-dialog";
+} from "@/components/ui/alert-dialog";
 
 interface User {
   id: number;
@@ -36,7 +36,11 @@ interface User {
   last_login_at: string | null;
 }
 
-export function UsersList() {
+interface UsersListProps {
+  refreshKey?: number;
+}
+
+export function UsersList({ refreshKey = 0 }: UsersListProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +65,7 @@ export function UsersList() {
     }
 
     fetchUsers();
-  }, []);
+  }, [refreshKey]);
 
   const handleDeleteUser = async (userId: number) => {
     try {

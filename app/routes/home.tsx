@@ -1,5 +1,7 @@
 import type { Route } from "./+types/home";
-import { UsersList } from "~/components/users-list";
+import { useState } from "react";
+import { UsersList } from "@/components/users-list";
+import { UserForm } from "@/components/user-form";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -15,6 +17,12 @@ export function loader({ context }: Route.LoaderArgs) {
 }
 
 export default function UsersPage({ loaderData }: Route.ComponentProps) {
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleUserCreated = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="space-y-8">
@@ -48,7 +56,11 @@ export default function UsersPage({ loaderData }: Route.ComponentProps) {
           </p>
         </div>
 
-        <UsersList />
+        {/* Add User Form */}
+        <UserForm onUserCreated={handleUserCreated} />
+
+        {/* Users List */}
+        <UsersList key={refreshKey} />
       </div>
     </div>
   );
