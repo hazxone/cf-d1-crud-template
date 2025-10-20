@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { LogOut } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 
 // Types
 type TodoType = "personal" | "work" | "shopping" | "other";
@@ -162,11 +165,11 @@ export default function TodoPage() {
 
   const getTypeColor = (type: TodoType) => {
     switch (type) {
-      case "personal": return "bg-blue-100 text-blue-800 hover:bg-blue-100";
-      case "work": return "bg-green-100 text-green-800 hover:bg-green-100";
-      case "shopping": return "bg-purple-100 text-purple-800 hover:bg-purple-100";
-      case "other": return "bg-gray-100 text-gray-800 hover:bg-gray-100";
-      default: return "bg-gray-100 text-gray-800 hover:bg-gray-100";
+      case "personal": return "bg-amber-200 text-amber-900 hover:bg-amber-300";
+      case "work": return "bg-orange-200 text-orange-900 hover:bg-orange-300";
+      case "shopping": return "bg-yellow-200 text-yellow-900 hover:bg-yellow-300";
+      case "other": return "bg-stone-200 text-stone-800 hover:bg-stone-300";
+      default: return "bg-stone-200 text-stone-800 hover:bg-stone-300";
     }
   };
 
@@ -181,9 +184,11 @@ export default function TodoPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8 px-4 max-w-4xl">
-        <div className="flex items-center justify-center p-8">
-          <div className="text-sm text-muted-foreground">Loading...</div>
+      <div className="min-h-screen bg-amber-50/50">
+        <div className="container mx-auto py-8 px-4 max-w-4xl">
+          <div className="flex items-center justify-center p-8">
+            <div className="text-sm text-muted-foreground">Loading...</div>
+          </div>
         </div>
       </div>
     );
@@ -191,18 +196,21 @@ export default function TodoPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto py-8 px-4 max-w-4xl">
-        <div className="flex items-center justify-center p-8">
-          <div className="text-sm text-red-600">Error: {error}</div>
+      <div className="min-h-screen bg-amber-50/50">
+        <div className="container mx-auto py-8 px-4 max-w-4xl">
+          <div className="flex items-center justify-center p-8">
+            <div className="text-sm text-red-600">Error: {error}</div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
+    <div className="min-h-screen bg-amber-50/50">
+      <div className="container mx-auto py-8 px-4 max-w-4xl">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-start gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold">Todo List</h1>
           {currentUser && (
@@ -210,10 +218,8 @@ export default function TodoPage() {
               Managing tasks for {currentUser.first_name}
             </p>
           )}
-        </div>
-        {currentUser && todos.length > 0 && (
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3 text-sm font-medium">
+          {currentUser && todos.length > 0 && (
+            <div className="mt-4 flex flex-wrap justify-start items-center gap-x-4 gap-y-1 text-sm font-medium">
               <span title="Total tasks">
                 Total: <span className="font-semibold">{todos.length}</span>
               </span>
@@ -224,33 +230,41 @@ export default function TodoPage() {
                 Pending: <span className="font-semibold">{todos.filter(t => !t.completed).length}</span>
               </span>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
+          )}
+        </div>
+
+        {currentUser && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={`https://avatar.vercel.sh/${currentUser.username}.png`} alt={currentUser.username} />
+                  <AvatarFallback>{currentUser.first_name.charAt(0)}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuItem onClick={() => {
                 localStorage.removeItem('currentUser');
                 window.location.href = '/login';
-              }}
-            >
-              Logout
-            </Button>
-          </div>
+              }}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
 
       {/* Add Todo Form */}
       {currentUser && (
-        <Card className="mb-8">
+        <Card className="mb-8 bg-amber-50/70 border-amber-200/50 shadow-sm">
           <CardHeader>
             <CardTitle>Add New Task</CardTitle>
-            <CardDescription>
-              Enter your task details and select a category
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="todo-text">Task Description</Label>
                 <Input
                   id="todo-text"
                   type="text"
@@ -258,7 +272,6 @@ export default function TodoPage() {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleKeyPress}
-                  className="mt-1"
                 />
               </div>
 
@@ -271,7 +284,7 @@ export default function TodoPage() {
                       variant={selectedType === type ? "default" : "outline"}
                       size="sm"
                       onClick={() => setSelectedType(type)}
-                      className="capitalize"
+                      className={`capitalize ${selectedType === type ? "bg-amber-600 hover:bg-amber-700" : "border-amber-300 text-amber-800 hover:bg-amber-100"}`}
                     >
                       {type}
                     </Button>
@@ -282,7 +295,7 @@ export default function TodoPage() {
               <Button
                 onClick={addTodo}
                 disabled={inputText.trim() === ""}
-                className="w-full"
+                className="w-full bg-amber-600 hover:bg-amber-700"
               >
                 Add Task
               </Button>
@@ -292,7 +305,7 @@ export default function TodoPage() {
       )}
 
       {/* Todo List */}
-      <Card>
+      <Card className="bg-amber-50/70 border-amber-200/50 shadow-sm">
         <CardHeader>
           <CardTitle>Your Tasks</CardTitle>
           <CardDescription>Here is the list of your tasks.</CardDescription>
@@ -303,47 +316,96 @@ export default function TodoPage() {
               <p className="text-gray-500">No tasks yet. Add your first task above!</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">Status</TableHead>
-                  <TableHead>Task</TableHead>
-                  <TableHead className="w-[100px]">Type</TableHead>
-                  <TableHead className="w-[180px]">Created At</TableHead>
-                  <TableHead className="w-[100px] text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]">Status</TableHead>
+                      <TableHead>Task</TableHead>
+                      <TableHead className="w-[100px]">Type</TableHead>
+                      <TableHead className="w-[180px]">Created At</TableHead>
+                      <TableHead className="w-[100px] text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {todos.map((todo) => (
+                      <TableRow key={todo.id} className={todo.completed ? "opacity-75" : ""}>
+                        <TableCell>
+                          <Checkbox
+                            checked={todo.completed}
+                            onCheckedChange={() => toggleTodo(todo.id)}
+                            aria-label="Toggle task completion"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <span className={todo.completed ? "line-through text-gray-500" : ""}>{todo.text}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getTypeColor(todo.type)}>{todo.type}</Badge>
+                        </TableCell>
+                        <TableCell>{formatDate(todo.created_at)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteTodo(todo.id)}
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                          >
+                            Delete
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3">
                 {todos.map((todo) => (
-                  <TableRow key={todo.id} className={todo.completed ? "opacity-75" : ""}>
-                    <TableCell>
+                  <div key={todo.id} className={`p-4 rounded-lg border border-amber-200/50 bg-amber-50/30 shadow-sm ${todo.completed ? "opacity-75" : ""}`}>
+                    <div className="flex items-start gap-3">
                       <Checkbox
                         checked={todo.completed}
                         onCheckedChange={() => toggleTodo(todo.id)}
                         aria-label="Toggle task completion"
+                        className="mt-1"
                       />
-                    </TableCell>
-                    <TableCell>
-                      <span className={todo.completed ? "line-through text-gray-500" : ""}>{todo.text}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getTypeColor(todo.type)}>{todo.type}</Badge>
-                    </TableCell>
-                    <TableCell>{formatDate(todo.created_at)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteTodo(todo.id)}
-                        className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                      >
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-medium text-sm ${todo.completed ? "line-through text-gray-500" : ""} break-words`}>
+                          {todo.text}
+                        </p>
+                        <div className="mt-2 space-y-1">
+                          <Badge className={getTypeColor(todo.type)}>{todo.type}</Badge>
+                          <div>
+                            <span className="text-xs text-gray-500">
+                              {formatDate(todo.created_at)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="ml-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteTodo(todo.id)}
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8 p-0"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18"/>
+                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                            <line x1="10" y1="11" x2="10" y2="17"/>
+                            <line x1="14" y1="11" x2="14" y2="17"/>
+                          </svg>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -360,6 +422,7 @@ export default function TodoPage() {
             <a href="/test-page">🧪 Test Page</a>
           </Button>
         </div>
+      </div>
       </div>
     </div>
   );
