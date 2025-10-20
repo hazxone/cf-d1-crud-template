@@ -1,94 +1,117 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Alert, AlertDescription } from "~/components/ui/alert";
 
-const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
+interface LoginFormProps {
+  onLoginSuccess: (user: any) => void;
+}
 
-type LoginForm = z.infer<typeof loginSchema>;
-
-export function LoginForm() {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
+export function LoginForm({ onLoginSuccess }: LoginFormProps) {
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const onSubmit = async (data: LoginForm) => {
-    console.log("Login attempt:", data);
-    // Here you would typically handle the login logic
-    // For now, we'll just log it
-    alert(`Login attempt with email: ${data.email}`);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json() as { success: boolean; data?: any; error?: string };
+
+      if (data.success && data.data) {
+        onLoginSuccess(data.data);
+      } else {
+        setError(data.error || "Login failed");
+      }
+    } catch (err) {
+      setError("Network error occurred");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold text-center">Sign In</CardTitle>
         <CardDescription className="text-center">
-          Enter your email and password to login to your account
+          Enter your email and password to access your account
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
+              name="email"
               type="email"
-              placeholder="Enter your email"
-              {...register("email")}
-              className={errors.email ? "border-red-500" : ""}
+              placeholder="user@example.com"
+              value={formData.email}
+              onChange={handleChange}
+              required
             />
-            {errors.email && (
-              <p className="text-sm text-red-500">{errors.email.message}</p>
-            )}
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <Input
               id="password"
+              name="password"
               type="password"
               placeholder="Enter your password"
-              {...register("password")}
-              className={errors.password ? "border-red-500" : ""}
+              value={formData.password}
+              onChange={handleChange}
+              required
             />
-            {errors.password && (
-              <p className="text-sm text-red-500">{errors.password.message}</p>
-            )}
           </div>
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
+
           <Button
             type="submit"
             className="w-full"
-            disabled={isSubmitting}
+            disabled={loading}
           >
-            {isSubmitting ? "Signing in..." : "Sign In"}
+            {loading ? "Signing In..." : "Sign In"}
           </Button>
-          <div className="text-center space-y-2">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Don't have an account?{" "}
-              <Button variant="link" className="p-0 h-auto font-normal">
-                Sign up
-              </Button>
-            </p>
-            <Button variant="link" className="p-0 h-auto text-sm">
-              Forgot your password?
-            </Button>
-          </div>
-        </CardFooter>
-      </form>
+        </form>
+
+        <div className="mt-4 text-center text-sm">
+          <p className="text-muted-foreground">
+            Don't have an account?{" "}
+            <a href="/register" className="text-primary hover:underline">
+              Sign up here
+            </a>
+          </p>
+        </div>
+      </CardContent>
     </Card>
   );
 }

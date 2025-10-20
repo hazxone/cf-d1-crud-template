@@ -38,51 +38,36 @@ export function meta({}: Route.MetaArgs) {
 // Main page component
 export default function TodoPage() {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [inputText, setInputText] = useState("");
   const [selectedType, setSelectedType] = useState<TodoType>("personal");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load users on mount
+  // Load current user from localStorage on mount
   useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const response = await fetch("/api/users");
-        const data = await response.json() as { success: boolean; data: User[]; error?: string };
-
-        if (data.success) {
-          setUsers(data.data);
-          // Auto-select first user if available
-          if (data.data.length > 0) {
-            setSelectedUserId(data.data[0].id);
-          }
-        } else {
-          setError(data.error || "Failed to fetch users");
-        }
-      } catch (err) {
-        setError("Network error occurred");
-      } finally {
-        setLoading(false);
-      }
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      setCurrentUser(user);
+    } else {
+      setError("No user logged in. Please log in first.");
     }
-
-    fetchUsers();
+    setLoading(false);
   }, []);
 
-  // Load todos when user selection changes
+  // Load todos when current user changes
   useEffect(() => {
-    if (selectedUserId) {
+    if (currentUser) {
       fetchTodos();
     }
-  }, [selectedUserId]);
+  }, [currentUser]);
 
   const fetchTodos = async () => {
-    if (!selectedUserId) return;
+    if (!currentUser) return;
 
     try {
-      const response = await fetch(`/api/todos/${selectedUserId}`);
+      const response = await fetch(`/api/todos/${currentUser.id}`);
       const data = await response.json() as { success: boolean; data: Todo[]; error?: string };
 
       if (data.success) {
@@ -96,7 +81,7 @@ export default function TodoPage() {
   };
 
   const addTodo = async () => {
-    if (inputText.trim() === "" || !selectedUserId) return;
+    if (inputText.trim() === "" || !currentUser) return;
 
     try {
       const response = await fetch("/api/todos", {
@@ -105,7 +90,7 @@ export default function TodoPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: selectedUserId,
+          userId: currentUser.id,
           text: inputText.trim(),
           type: selectedType,
         }),
@@ -224,32 +209,33 @@ export default function TodoPage() {
         </p>
       </div>
 
-      {/* User Selection */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Select User</CardTitle>
-          <CardDescription>
-            Choose which user's todos to manage
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <select
-            value={selectedUserId?.toString() || ''}
-            onChange={(e) => setSelectedUserId(parseInt(e.target.value))}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Select a user</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id.toString()}>
-                {user.first_name} {user.last_name} ({user.email})
-              </option>
-            ))}
-          </select>
-        </CardContent>
-      </Card>
+      {/* User Info */}
+      {currentUser && (
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Welcome back!</CardTitle>
+                <CardDescription>
+                  Managing todos for {currentUser.first_name} {currentUser.last_name}
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  localStorage.removeItem('currentUser');
+                  window.location.href = '/login';
+                }}
+              >
+                Logout
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+      )}
 
       {/* Add Todo Form */}
-      {selectedUserId && (
+      {currentUser && (
         <Card className="mb-8">
           <CardHeader>
             <CardTitle>Add New Task</CardTitle>
@@ -267,7 +253,7 @@ export default function TodoPage() {
                   placeholder="What do you need to do?"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyPress}
                   className="mt-1"
                 />
               </div>
@@ -355,7 +341,7 @@ export default function TodoPage() {
       </div>
 
       {/* Stats */}
-      {selectedUserId && todos.length > 0 && (
+      {currentUser && todos.length > 0 && (
         <Card className="mt-8">
           <CardContent className="p-4">
             <div className="flex justify-between text-sm text-gray-600">
