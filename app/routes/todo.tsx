@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 
@@ -200,39 +202,41 @@ export default function TodoPage() {
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Todo List
-        </h1>
-        <p className="text-lg text-gray-600">
-          Manage tasks with database storage
-        </p>
-      </div>
-
-      {/* User Info */}
-      {currentUser && (
-        <Card className="mb-6">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>Welcome back!</CardTitle>
-                <CardDescription>
-                  Managing todos for {currentUser.first_name} {currentUser.last_name}
-                </CardDescription>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  localStorage.removeItem('currentUser');
-                  window.location.href = '/login';
-                }}
-              >
-                Logout
-              </Button>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-2xl font-bold">Todo List</h1>
+          {currentUser && (
+            <p className="text-sm text-muted-foreground">
+              Managing tasks for {currentUser.first_name}
+            </p>
+          )}
+        </div>
+        {currentUser && todos.length > 0 && (
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 text-sm font-medium">
+              <span title="Total tasks">
+                Total: <span className="font-semibold">{todos.length}</span>
+              </span>
+              <span className="text-green-600" title="Completed tasks">
+                Completed: <span className="font-semibold">{todos.filter(t => t.completed).length}</span>
+              </span>
+              <span className="text-yellow-600" title="Pending tasks">
+                Pending: <span className="font-semibold">{todos.filter(t => !t.completed).length}</span>
+              </span>
             </div>
-          </CardHeader>
-        </Card>
-      )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                localStorage.removeItem('currentUser');
+                window.location.href = '/login';
+              }}
+            >
+              Logout
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Add Todo Form */}
       {currentUser && (
@@ -288,86 +292,73 @@ export default function TodoPage() {
       )}
 
       {/* Todo List */}
-      <div className="space-y-4">
-        {todos.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-8">
-              <p className="text-gray-500">
-                No tasks yet. Add your first task above!
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          todos.map((todo) => (
-            <Card key={todo.id} className={todo.completed ? "opacity-75" : ""}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3 flex-1">
-                    <input
-                      type="checkbox"
-                      checked={todo.completed}
-                      onChange={() => toggleTodo(todo.id)}
-                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    />
-
-                    <div className="flex-1">
-                      <p className={`text-lg ${todo.completed ? "line-through text-gray-500" : "text-gray-900"}`}>
-                        {todo.text}
-                      </p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <Badge className={getTypeColor(todo.type)}>
-                          {todo.type}
-                        </Badge>
-                        <span className="text-sm text-gray-500">
-                          Added {formatDate(todo.created_at)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteTodo(todo.id)}
-                    className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
-
-      {/* Stats */}
-      {currentUser && todos.length > 0 && (
-        <Card className="mt-8">
-          <CardContent className="p-4">
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Total: {todos.length}</span>
-              <span>Completed: {todos.filter(t => t.completed).length}</span>
-              <span>Pending: {todos.filter(t => !t.completed).length}</span>
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Tasks</CardTitle>
+          <CardDescription>Here is the list of your tasks.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {todos.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No tasks yet. Add your first task above!</p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]">Status</TableHead>
+                  <TableHead>Task</TableHead>
+                  <TableHead className="w-[100px]">Type</TableHead>
+                  <TableHead className="w-[180px]">Created At</TableHead>
+                  <TableHead className="w-[100px] text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {todos.map((todo) => (
+                  <TableRow key={todo.id} className={todo.completed ? "opacity-75" : ""}>
+                    <TableCell>
+                      <Checkbox
+                        checked={todo.completed}
+                        onCheckedChange={() => toggleTodo(todo.id)}
+                        aria-label="Toggle task completion"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <span className={todo.completed ? "line-through text-gray-500" : ""}>{todo.text}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getTypeColor(todo.type)}>{todo.type}</Badge>
+                    </TableCell>
+                    <TableCell>{formatDate(todo.created_at)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteTodo(todo.id)}
+                        className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                      >
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+
 
       {/* Navigation */}
-      <div className="mt-8">
+      <div className="mt-8 text-center">
         <div className="flex justify-center gap-4">
-          <a
-            href="/"
-            className="text-blue-600 hover:text-blue-800 font-medium"
-          >
-            ← Back to Home
-          </a>
-          <a
-            href="/test-page"
-            className="text-purple-600 hover:text-purple-800 font-medium"
-          >
-              🧪 Test Page
-            </a>
+          <Button asChild variant="outline">
+            <a href="/">← Back to Home</a>
+          </Button>
+          <Button asChild variant="outline">
+            <a href="/test-page">🧪 Test Page</a>
+          </Button>
         </div>
       </div>
     </div>
