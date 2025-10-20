@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // Types
-type TodoType = "personal" | "work" | "shopping" | "other";
+type TodoType = "personal" | "work" | "shopping" | "health" | "finance" | "learning" | "home" | "other";
 
 interface User {
   id: number;
@@ -181,6 +181,10 @@ export default function TodoPage() {
       case "personal": return "bg-amber-200 text-amber-900 hover:bg-amber-300";
       case "work": return "bg-orange-200 text-orange-900 hover:bg-orange-300";
       case "shopping": return "bg-yellow-200 text-yellow-900 hover:bg-yellow-300";
+      case "health": return "bg-green-200 text-green-900 hover:bg-green-300";
+      case "finance": return "bg-blue-200 text-blue-900 hover:bg-blue-300";
+      case "learning": return "bg-purple-200 text-purple-900 hover:bg-purple-300";
+      case "home": return "bg-pink-200 text-pink-900 hover:bg-pink-300";
       case "other": return "bg-stone-200 text-stone-800 hover:bg-stone-300";
       default: return "bg-stone-200 text-stone-800 hover:bg-stone-300";
     }
@@ -290,9 +294,8 @@ export default function TodoPage() {
               </div>
 
               <div>
-                <Label>Task Type</Label>
-                <div className="flex gap-2 mt-2">
-                  {(["personal", "work", "shopping", "other"] as TodoType[]).map((type) => (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {(["personal", "work", "shopping", "health", "finance", "learning", "home", "other"] as TodoType[]).map((type) => (
                     <Button
                       key={type}
                       variant={selectedType === type ? "default" : "outline"}
@@ -401,7 +404,7 @@ export default function TodoPage() {
               {/* Mobile Card View */}
               <div className="md:hidden space-y-3">
                 {todos.map((todo) => (
-                  <div key={todo.id} className={`p-4 rounded-lg border border-amber-300/70 bg-amber-50/30 shadow-sm ${todo.completed ? "opacity-75" : ""}`}>
+                  <div key={todo.id} className={`p-4 rounded-lg border border-amber-300/70 bg-gradient-to-br from-amber-50/50 to-amber-100/50 shadow-sm ${todo.completed ? "opacity-75" : ""}`}>
                     <div className="flex items-start gap-3">
                       <Checkbox
                         checked={todo.completed}
