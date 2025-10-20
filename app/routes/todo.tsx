@@ -10,6 +10,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // Types
 type TodoType = "personal" | "work" | "shopping" | "other";
@@ -48,6 +59,7 @@ export default function TodoPage() {
   const [selectedType, setSelectedType] = useState<TodoType>("personal");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [todoToDelete, setTodoToDelete] = useState<Todo | null>(null);
 
   // Load current user from localStorage on mount
   useEffect(() => {
@@ -149,6 +161,7 @@ export default function TodoPage() {
 
       if (data.success) {
         await fetchTodos(); // Refresh the list
+        setTodoToDelete(null); // Clear the todo to delete
       } else {
         setError(data.error || "Failed to delete todo");
       }
@@ -272,6 +285,7 @@ export default function TodoPage() {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleKeyPress}
+                  className="bg-white"
                 />
               </div>
 
@@ -347,14 +361,36 @@ export default function TodoPage() {
                         </TableCell>
                         <TableCell>{formatDate(todo.created_at)}</TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteTodo(todo.id)}
-                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                          >
-                            Delete
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setTodoToDelete(todo)}
+                                className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                              >
+                                Delete
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the task:
+                                  <span className="font-semibold block mt-2">"{todo.text}"</span>
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => todoToDelete && deleteTodo(todoToDelete.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Delete Task
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -365,7 +401,7 @@ export default function TodoPage() {
               {/* Mobile Card View */}
               <div className="md:hidden space-y-3">
                 {todos.map((todo) => (
-                  <div key={todo.id} className={`p-4 rounded-lg border border-amber-200/50 bg-amber-50/30 shadow-sm ${todo.completed ? "opacity-75" : ""}`}>
+                  <div key={todo.id} className={`p-4 rounded-lg border border-amber-300/70 bg-amber-50/30 shadow-sm ${todo.completed ? "opacity-75" : ""}`}>
                     <div className="flex items-start gap-3">
                       <Checkbox
                         checked={todo.completed}
@@ -387,19 +423,41 @@ export default function TodoPage() {
                         </div>
                       </div>
                       <div className="ml-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteTodo(todo.id)}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8 p-0"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 6h18"/>
-                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                            <line x1="10" y1="11" x2="10" y2="17"/>
-                            <line x1="14" y1="11" x2="14" y2="17"/>
-                          </svg>
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setTodoToDelete(todo)}
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8 p-0"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18"/>
+                                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                <line x1="14" y1="11" x2="14" y2="17"/>
+                              </svg>
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the task:
+                                <span className="font-semibold block mt-2">"{todo.text}"</span>
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => todoToDelete && deleteTodo(todoToDelete.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Delete Task
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   </div>
