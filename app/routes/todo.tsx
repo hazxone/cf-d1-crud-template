@@ -5,11 +5,25 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut } from "lucide-react";
+import { LogOut, MoreHorizontal, ArrowUpDown, Edit, ChevronDown } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import type {
+  ColumnDef,
+  ColumnFiltersState,
+  SortingState,
+  VisibilityState,
+} from "@tanstack/react-table";
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +57,149 @@ interface Todo {
   updated_at: string;
 }
 
+// Column definitions for the data table
+export const todoColumns: ColumnDef<Todo>[] = [
+  {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.original.completed}
+        onCheckedChange={(value) => {
+          // Toggle completion status
+          if (typeof row.original.id === 'number') {
+            // This will be handled by the parent component
+            const event = new CustomEvent('toggleTodo', { detail: row.original.id });
+            window.dispatchEvent(event);
+          }
+        }}
+        aria-label="Toggle task completion"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "text",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Task
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
+    },
+    cell: ({ row }) => {
+      const todo = row.original;
+      return (
+        <div className="font-medium">
+          <span className={todo.completed ? "line-through text-gray-500" : ""}>
+            {todo.text}
+          </span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "type",
+    header: "Type",
+    cell: ({ row }) => {
+      const todo = row.original;
+      const getTypeColor = (type: TodoType) => {
+        switch (type) {
+          case "personal": return "bg-amber-200 text-amber-900 hover:bg-amber-300";
+          case "work": return "bg-orange-200 text-orange-900 hover:bg-orange-300";
+          case "shopping": return "bg-yellow-200 text-yellow-900 hover:bg-yellow-300";
+          case "health": return "bg-green-200 text-green-900 hover:bg-green-300";
+          case "finance": return "bg-blue-200 text-blue-900 hover:bg-blue-300";
+          case "learning": return "bg-purple-200 text-purple-900 hover:bg-purple-300";
+          case "home": return "bg-pink-200 text-pink-900 hover:bg-pink-300";
+          case "other": return "bg-stone-200 text-stone-800 hover:bg-stone-300";
+          default: return "bg-stone-200 text-stone-800 hover:bg-stone-300";
+        }
+      };
+      return <Badge className={getTypeColor(todo.type)}>{todo.type}</Badge>;
+    },
+  },
+  {
+    accessorKey: "created_at",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Created At
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
+    },
+    cell: ({ row }) => {
+      const formatDate = (dateString: string) => {
+        return new Intl.DateTimeFormat('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }).format(new Date(dateString));
+      };
+      return formatDate(row.getValue("created_at"));
+    },
+  },
+  {
+    id: "actions",
+    enableHiding: false,
+    cell: ({ row }) => {
+      const todo = row.original;
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => {
+                const event = new CustomEvent('editTodo', { detail: todo });
+                window.dispatchEvent(event);
+              }}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Edit task
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => {
+                const event = new CustomEvent('deleteTodo', { detail: todo });
+                window.dispatchEvent(event);
+              }}
+              className="text-red-600"
+            >
+              Delete task
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    },
+  },
+];
+
 // Page metadata
 export function meta({}: Route.MetaArgs) {
   return [
@@ -60,6 +217,13 @@ export default function TodoPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [todoToDelete, setTodoToDelete] = useState<Todo | null>(null);
+  const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
+
+  // Data table state
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
 
   // Load current user from localStorage on mount
   useEffect(() => {
@@ -79,6 +243,58 @@ export default function TodoPage() {
       fetchTodos();
     }
   }, [currentUser]);
+
+  // Create the table instance
+  const table = useReactTable({
+    data: todos,
+    columns: todoColumns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+    },
+  });
+
+  // Event listeners for data table actions
+  useEffect(() => {
+    const handleToggleTodo = (event: CustomEvent) => {
+      const todoId = event.detail;
+      toggleTodo(todoId);
+    };
+
+    const handleEditTodo = (event: CustomEvent) => {
+      const todo = event.detail as Todo;
+      setEditingTodo(todo);
+      setInputText(todo.text);
+      setSelectedType(todo.type);
+      // Focus on input
+      document.getElementById('todo-text')?.focus();
+    };
+
+    const handleDeleteTodo = (event: CustomEvent) => {
+      const todo = event.detail as Todo;
+      setTodoToDelete(todo);
+    };
+
+    window.addEventListener('toggleTodo', handleToggleTodo as EventListener);
+    window.addEventListener('editTodo', handleEditTodo as EventListener);
+    window.addEventListener('deleteTodo', handleDeleteTodo as EventListener);
+
+    return () => {
+      window.removeEventListener('toggleTodo', handleToggleTodo as EventListener);
+      window.removeEventListener('editTodo', handleEditTodo as EventListener);
+      window.removeEventListener('deleteTodo', handleDeleteTodo as EventListener);
+    };
+  }, [todos]);
 
   const fetchTodos = async () => {
     if (!currentUser) return;
@@ -101,29 +317,63 @@ export default function TodoPage() {
     if (inputText.trim() === "" || !currentUser) return;
 
     try {
-      const response = await fetch("/api/todos", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: currentUser.id,
-          text: inputText.trim(),
-          type: selectedType,
-        }),
-      });
+      let response;
+      let data;
 
-      const data = await response.json() as { success: boolean; data: Todo; error?: string };
+      if (editingTodo) {
+        // Update existing todo
+        response = await fetch(`/api/todos/${editingTodo.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: inputText.trim(),
+            type: selectedType,
+          }),
+        });
 
-      if (data.success) {
-        await fetchTodos(); // Refresh the list
-        setInputText("");
+        data = await response.json() as { success: boolean; data: Todo; error?: string };
+
+        if (data.success) {
+          await fetchTodos(); // Refresh the list
+          setInputText("");
+          setEditingTodo(null); // Clear edit state
+        } else {
+          setError(data.error || "Failed to update todo");
+        }
       } else {
-        setError(data.error || "Failed to add todo");
+        // Create new todo
+        response = await fetch("/api/todos", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            text: inputText.trim(),
+            type: selectedType,
+          }),
+        });
+
+        data = await response.json() as { success: boolean; data: Todo; error?: string };
+
+        if (data.success) {
+          await fetchTodos(); // Refresh the list
+          setInputText("");
+        } else {
+          setError(data.error || "Failed to add todo");
+        }
       }
     } catch (err) {
       setError("Network error occurred");
     }
+  };
+
+  const cancelEdit = () => {
+    setEditingTodo(null);
+    setInputText("");
+    setSelectedType("personal");
   };
 
   const toggleTodo = async (id: number) => {
@@ -273,11 +523,17 @@ export default function TodoPage() {
         )}
       </div>
 
-      {/* Add Todo Form */}
+      {/* Add/Edit Todo Form */}
       {currentUser && (
         <Card className="mb-8 bg-amber-50/70 border-amber-200/50 shadow-sm">
           <CardHeader>
-            <CardTitle>Add New Task</CardTitle>
+            <CardTitle>{editingTodo ? "Edit Task" : "Add New Task"}</CardTitle>
+            <CardDescription>
+              {editingTodo
+                ? "Update the task details below."
+                : "Create a new task to add to your list."
+              }
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -309,13 +565,25 @@ export default function TodoPage() {
                 </div>
               </div>
 
-              <Button
-                onClick={addTodo}
-                disabled={inputText.trim() === ""}
-                className="w-full bg-amber-600 hover:bg-amber-700"
-              >
-                Add Task
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={addTodo}
+                  disabled={inputText.trim() === ""}
+                  className={`flex-1 ${editingTodo ? "bg-blue-600 hover:bg-blue-700" : "bg-amber-600 hover:bg-amber-700"}`}
+                >
+                  {editingTodo ? "Update Task" : "Add Task"}
+                </Button>
+
+                {editingTodo && (
+                  <Button
+                    onClick={cancelEdit}
+                    variant="outline"
+                    className="px-4"
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -325,7 +593,7 @@ export default function TodoPage() {
       <Card className="bg-amber-50/70 border-amber-200/50 shadow-sm">
         <CardHeader>
           <CardTitle>Your Tasks</CardTitle>
-          <CardDescription>Here is the list of your tasks.</CardDescription>
+          <CardDescription>Manage your tasks with advanced filtering and sorting.</CardDescription>
         </CardHeader>
         <CardContent>
           {todos.length === 0 ? (
@@ -333,140 +601,193 @@ export default function TodoPage() {
               <p className="text-gray-500">No tasks yet. Add your first task above!</p>
             </div>
           ) : (
-            <>
-              {/* Desktop Table View */}
+            <div className="w-full">
+              {/* Search and Column Controls */}
+              <div className="flex items-center py-4">
+                <Input
+                  placeholder="Filter tasks..."
+                  value={(table.getColumn("text")?.getFilterValue() as string) ?? ""}
+                  onChange={(event) =>
+                    table.getColumn("text")?.setFilterValue(event.target.value)
+                  }
+                  className="max-w-sm"
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="ml-auto">
+                      Columns <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {table
+                      .getAllColumns()
+                      .filter((column) => column.getCanHide())
+                      .map((column) => {
+                        return (
+                          <DropdownMenuCheckboxItem
+                            key={column.id}
+                            className="capitalize"
+                            checked={column.getIsVisible()}
+                            onCheckedChange={(value) =>
+                              column.toggleVisibility(!!value)
+                            }
+                          >
+                            {column.id}
+                          </DropdownMenuCheckboxItem>
+                        )
+                      })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Desktop Data Table View */}
               <div className="hidden md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">Status</TableHead>
-                      <TableHead>Task</TableHead>
-                      <TableHead className="w-[100px]">Type</TableHead>
-                      <TableHead className="w-[180px]">Created At</TableHead>
-                      <TableHead className="w-[100px] text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {todos.map((todo) => (
-                      <TableRow key={todo.id} className={todo.completed ? "opacity-75" : ""}>
-                        <TableCell>
-                          <Checkbox
-                            checked={todo.completed}
-                            onCheckedChange={() => toggleTodo(todo.id)}
-                            aria-label="Toggle task completion"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <span className={todo.completed ? "line-through text-gray-500" : ""}>{todo.text}</span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getTypeColor(todo.type)}>{todo.type}</Badge>
-                        </TableCell>
-                        <TableCell>{formatDate(todo.created_at)}</TableCell>
-                        <TableCell className="text-right">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setTodoToDelete(todo)}
-                                className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                              >
-                                Delete
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the task:
-                                  <span className="font-semibold block mt-2">"{todo.text}"</span>
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => todoToDelete && deleteTodo(todoToDelete.id)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  Delete Task
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="overflow-hidden rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id}>
+                          {headerGroup.headers.map((header) => {
+                            return (
+                              <TableHead key={header.id}>
+                                {header.isPlaceholder
+                                  ? null
+                                  : flexRender(
+                                      header.column.columnDef.header,
+                                      header.getContext()
+                                    )}
+                              </TableHead>
+                            )
+                          })}
+                        </TableRow>
+                      ))}
+                    </TableHeader>
+                    <TableBody>
+                      {table.getRowModel().rows?.length ? (
+                        table.getRowModel().rows.map((row) => (
+                          <TableRow
+                            key={row.id}
+                            data-state={row.getIsSelected() && "selected"}
+                            className={row.original.completed ? "opacity-75" : ""}
+                          >
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell key={cell.id}>
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext()
+                                )}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell
+                            colSpan={todoColumns.length}
+                            className="h-24 text-center"
+                          >
+                            No results.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
 
               {/* Mobile Card View */}
               <div className="md:hidden space-y-3">
-                {todos.map((todo) => (
-                  <div key={todo.id} className={`p-4 rounded-lg border border-amber-300/70 bg-gradient-to-br from-amber-50/50 to-amber-100/50 shadow-sm ${todo.completed ? "opacity-75" : ""}`}>
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        checked={todo.completed}
-                        onCheckedChange={() => toggleTodo(todo.id)}
-                        aria-label="Toggle task completion"
-                        className="mt-1"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-medium text-sm ${todo.completed ? "line-through text-gray-500" : ""} break-words`}>
-                          {todo.text}
-                        </p>
-                        <div className="mt-2 space-y-1">
-                          <Badge className={getTypeColor(todo.type)}>{todo.type}</Badge>
-                          <div>
-                            <span className="text-xs text-gray-500">
-                              {formatDate(todo.created_at)}
-                            </span>
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => {
+                    const todo = row.original;
+                    return (
+                      <div key={todo.id} className={`p-4 rounded-lg border border-amber-300/70 bg-gradient-to-br from-amber-50/50 to-amber-100/50 shadow-sm ${todo.completed ? "opacity-75" : ""}`}>
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            checked={todo.completed}
+                            onCheckedChange={() => toggleTodo(todo.id)}
+                            aria-label="Toggle task completion"
+                            className="mt-1"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium text-sm ${todo.completed ? "line-through text-gray-500" : ""} break-words`}>
+                              {todo.text}
+                            </p>
+                            <div className="mt-2 space-y-1">
+                              <Badge className={getTypeColor(todo.type)}>{todo.type}</Badge>
+                              <div>
+                                <span className="text-xs text-gray-500">
+                                  {formatDate(todo.created_at)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="ml-2">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Open menu</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    const event = new CustomEvent('editTodo', { detail: todo });
+                                    window.dispatchEvent(event);
+                                  }}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit task
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => setTodoToDelete(todo)}
+                                  className="text-red-600"
+                                >
+                                  Delete task
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
                       </div>
-                      <div className="ml-2">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setTodoToDelete(todo)}
-                              className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8 p-0"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3 6h18"/>
-                                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                                <line x1="10" y1="11" x2="10" y2="17"/>
-                                <line x1="14" y1="11" x2="14" y2="17"/>
-                              </svg>
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete the task:
-                                <span className="font-semibold block mt-2">"{todo.text}"</span>
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => todoToDelete && deleteTodo(todoToDelete.id)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                Delete Task
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No tasks match your filters.</p>
                   </div>
-                ))}
+                )}
               </div>
-            </>
+
+              {/* Pagination */}
+              <div className="flex items-center justify-end space-x-2 py-4">
+                <div className="text-muted-foreground flex-1 text-sm">
+                  {table.getFilteredSelectedRowModel().rows.length} of{" "}
+                  {table.getFilteredRowModel().rows.length} row(s) selected.
+                </div>
+                <div className="space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.previousPage()}
+                    disabled={!table.getCanPreviousPage()}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.nextPage()}
+                    disabled={!table.getCanNextPage()}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -484,6 +805,30 @@ export default function TodoPage() {
           </Button>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {todoToDelete && (
+        <AlertDialog open={!!todoToDelete} onOpenChange={(open) => !open && setTodoToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the task:
+                <span className="font-semibold block mt-2">"{todoToDelete.text}"</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => todoToDelete && deleteTodo(todoToDelete.id)}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete Task
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
       </div>
     </div>
   );

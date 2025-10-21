@@ -392,13 +392,43 @@ app.post("/api/todos", async (c) => {
 app.put("/api/todos/:id", async (c) => {
 	try {
 		const id = c.req.param("id");
-		const { completed } = await c.req.json();
+		const { completed, text, type } = await c.req.json();
 
-		await c.env.DB.prepare(`
-			UPDATE todos
-			SET completed = ?, updated_at = CURRENT_TIMESTAMP
-			WHERE id = ?
-		`).bind(completed, id).run();
+		// Build dynamic update query based on provided fields
+		let updateFields = [];
+		let bindValues = [];
+
+		if (completed !== undefined) {
+			updateFields.push("completed = ?");
+			bindValues.push(completed);
+		}
+
+		if (text !== undefined && text !== null) {
+			updateFields.push("text = ?");
+			bindValues.push(text);
+		}
+
+		if (type !== undefined && type !== null) {
+			updateFields.push("type = ?");
+			bindValues.push(type);
+		}
+
+		// Always update the timestamp
+		updateFields.push("updated_at = CURRENT_TIMESTAMP");
+
+		// Add id to bind values
+		bindValues.push(id);
+
+		// Execute update if there are fields to update
+		if (updateFields.length > 1) { // More than just updated_at
+			const updateQuery = `
+				UPDATE todos
+				SET ${updateFields.join(", ")}
+				WHERE id = ?
+			`;
+
+			await c.env.DB.prepare(updateQuery).bind(...bindValues).run();
+		}
 
 		const updatedTodo = await c.env.DB.prepare(`
 			SELECT id, user_id, text, type, completed, created_at, updated_at
