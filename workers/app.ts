@@ -942,6 +942,225 @@ app.get("/api/items/search/:userId", async (c) => {
 	}
 });
 
+// Products API endpoints (CRUD Template)
+
+// Get all products
+app.get("/api/products", async (c) => {
+	try {
+		const category = c.req.query("category");
+		const search = c.req.query("search");
+		const isActive = c.req.query("is_active");
+
+		let query = "SELECT * FROM products WHERE 1=1";
+		let bindValues: any[] = [];
+
+		if (category) {
+			query += " AND category = ?";
+			bindValues.push(category);
+		}
+
+		if (search) {
+			query += " AND (name LIKE ? OR description LIKE ?)";
+			bindValues.push(`%${search}%`, `%${search}%`);
+		}
+
+		if (isActive !== undefined) {
+			query += " AND is_active = ?";
+			bindValues.push(isActive === 'true' ? 1 : 0);
+		}
+
+		query += " ORDER BY created_at DESC";
+
+		const result = await c.env.DB.prepare(query).bind(...bindValues).all();
+
+		return c.json({
+			success: true,
+			data: result.results
+		});
+	} catch (error) {
+		console.error("Error fetching products:", error);
+		return c.json(
+			{ success: false, error: "Failed to fetch products" },
+			500
+		);
+	}
+});
+
+// Get single product
+app.get("/api/products/:id", async (c) => {
+	try {
+		const id = c.req.param("id");
+
+		const product = await c.env.DB.prepare(`
+			SELECT * FROM products WHERE id = ?
+		`).bind(id).first();
+
+		if (!product) {
+			return c.json(
+				{ success: false, error: "Product not found" },
+				404
+			);
+		}
+
+		return c.json({
+			success: true,
+			data: product
+		});
+	} catch (error) {
+		console.error("Error fetching product:", error);
+		return c.json(
+			{ success: false, error: "Failed to fetch product" },
+			500
+		);
+	}
+});
+
+// Create new product
+app.post("/api/products", async (c) => {
+	try {
+		const { name, description, price, stock, category, image_url, is_active } = await c.req.json();
+
+		if (!name || price === undefined) {
+			return c.json(
+				{ success: false, error: "Name and price are required" },
+				400
+			);
+		}
+
+		const result = await c.env.DB.prepare(`
+			INSERT INTO products (name, description, price, stock, category, image_url, is_active)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			name,
+			description || null,
+			price,
+			stock || 0,
+			category || 'general',
+			image_url || null,
+			is_active !== undefined ? is_active : true
+		).run();
+
+		const newProduct = await c.env.DB.prepare(`
+			SELECT * FROM products WHERE id = ?
+		`).bind(result.meta.last_row_id).first();
+
+		return c.json({
+			success: true,
+			data: newProduct,
+			message: "Product created successfully"
+		});
+	} catch (error) {
+		console.error("Error creating product:", error);
+		return c.json(
+			{ success: false, error: "Failed to create product" },
+			500
+		);
+	}
+});
+
+// Update product
+app.put("/api/products/:id", async (c) => {
+	try {
+		const id = c.req.param("id");
+		const { name, description, price, stock, category, image_url, is_active } = await c.req.json();
+
+		let updateFields = [];
+		let bindValues = [];
+
+		if (name !== undefined && name !== null) {
+			updateFields.push("name = ?");
+			bindValues.push(name);
+		}
+
+		if (description !== undefined) {
+			updateFields.push("description = ?");
+			bindValues.push(description);
+		}
+
+		if (price !== undefined) {
+			updateFields.push("price = ?");
+			bindValues.push(price);
+		}
+
+		if (stock !== undefined) {
+			updateFields.push("stock = ?");
+			bindValues.push(stock);
+		}
+
+		if (category !== undefined) {
+			updateFields.push("category = ?");
+			bindValues.push(category);
+		}
+
+		if (image_url !== undefined) {
+			updateFields.push("image_url = ?");
+			bindValues.push(image_url);
+		}
+
+		if (is_active !== undefined) {
+			updateFields.push("is_active = ?");
+			bindValues.push(is_active);
+		}
+
+		updateFields.push("updated_at = CURRENT_TIMESTAMP");
+		bindValues.push(id);
+
+		if (updateFields.length > 1) {
+			const updateQuery = `
+				UPDATE products
+				SET ${updateFields.join(", ")}
+				WHERE id = ?
+			`;
+			await c.env.DB.prepare(updateQuery).bind(...bindValues).run();
+		}
+
+		const updatedProduct = await c.env.DB.prepare(`
+			SELECT * FROM products WHERE id = ?
+		`).bind(id).first();
+
+		return c.json({
+			success: true,
+			data: updatedProduct,
+			message: "Product updated successfully"
+		});
+	} catch (error) {
+		console.error("Error updating product:", error);
+		return c.json(
+			{ success: false, error: "Failed to update product" },
+			500
+		);
+	}
+});
+
+// Delete product
+app.delete("/api/products/:id", async (c) => {
+	try {
+		const id = c.req.param("id");
+
+		const result = await c.env.DB.prepare(`
+			DELETE FROM products WHERE id = ?
+		`).bind(id).run();
+
+		if (result.meta.changes === 0) {
+			return c.json(
+				{ success: false, error: "Product not found" },
+				404
+			);
+		}
+
+		return c.json({
+			success: true,
+			message: "Product deleted successfully"
+		});
+	} catch (error) {
+		console.error("Error deleting product:", error);
+		return c.json(
+			{ success: false, error: "Failed to delete product" },
+			500
+		);
+	}
+});
+
 app.get("*", (c) => {
 	const requestHandler = createRequestHandler(
 		() => import("virtual:react-router/server-build"),
