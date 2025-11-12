@@ -65,11 +65,71 @@ CREATE TABLE users (
 );
 ```
 
+## PKM System Database Structure
+
+The project includes a comprehensive Personal Knowledge Management (PKM) system for capturing tasks, notes, and thoughts.
+
+### Items Table
+```sql
+CREATE TABLE items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    item_type TEXT CHECK(item_type IN ('task', 'note', 'thought')) DEFAULT 'task',
+    completed BOOLEAN DEFAULT FALSE,
+    priority TEXT CHECK(priority IN ('low', 'medium', 'high', NULL)) DEFAULT NULL,
+    due_date DATETIME DEFAULT NULL,
+    pinned BOOLEAN DEFAULT FALSE,
+    archived BOOLEAN DEFAULT FALSE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+```
+
+### Tags Table (Flexible Tagging System)
+```sql
+CREATE TABLE tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL DEFAULT '#6366f1',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(user_id, name)
+);
+
+CREATE TABLE item_tags (
+    item_id INTEGER NOT NULL,
+    tag_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (item_id, tag_id),
+    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+```
+
+### PKM API Endpoints
+
+**Items:**
+- `GET /api/items/:userId` - Fetch all items with tags
+- `POST /api/items` - Create new item with tags
+- `PUT /api/items/:id` - Update item (including tags)
+- `DELETE /api/items/:id` - Delete item
+- `GET /api/items/search/:userId` - Advanced search with filters
+
+**Tags:**
+- `GET /api/tags/:userId` - Fetch all user tags
+- `POST /api/tags` - Create new tag
+- `PUT /api/tags/:id` - Update tag
+- `DELETE /api/tags/:id` - Delete tag
+
 ## Important Notes
 - React Router projects cannot use `wrangler dev --remote` due to build system incompatibilities
 - Use `npm run dev` for development - it connects to local D1 database
 - For database changes, use manual SQL commands or proper migrations
 - The app includes a `/api/users` endpoint for fetching user data
+- The PKM system uses flexible tagging instead of fixed categories
 
 # Page Creation Guide
 
@@ -384,14 +444,77 @@ app/
 
 - **Home Page** (`/`) - User management dashboard with data table and navigation
 - **Test Page** (`/test-page`) - Demonstration page showing React Router v7 patterns
-- **Todo List** (`/todo`) - Full-featured todo app with local storage and shadcn UI
+- **Todo List** (`/todo`) - Original todo app with fixed categories (legacy)
+- **Memory** (`/memory`) - **NEW PKM System** - Tasks, notes, and thoughts with flexible tagging
 
 ### Page Features:
-- **Home Page**: Server-side data loading, user management interface, navigation links
-- **Test Page**: Server and client data fetching examples, comprehensive UI components
-- **Todo List**: Local state management, localStorage persistence, CRUD operations, task categorization
+
+**Home Page**: Server-side data loading, user management interface, navigation links
+
+**Test Page**: Server and client data fetching examples, comprehensive UI components
+
+**Todo List** (Legacy): Local state management, fixed 8 categories, CRUD operations
+
+**Memory** (PKM System - **RECOMMENDED**):
+- **Multi-type items**: Tasks (with completion), Notes (reference material), Thoughts (quick ideas)
+- **Flexible tagging**: Create custom tags with colors instead of fixed categories
+- **Smart organization**: Pin important items, archive completed ones, filter by status/type/tags
+- **Advanced search**: Text search + multi-filter support
+- **Keyboard shortcuts**:
+  - `n` - New note (switches type and focuses input)
+  - `t` - New task (switches type and focuses input)
+  - `/` - Focus search
+  - `Esc` - Cancel edit
+- **Stats dashboard**: Track tasks, notes, thoughts, and completion progress
+- **Tag management**: Create, delete, and color-code tags
+- **Priority support**: Mark items as low/medium/high priority
+- **Responsive design**: Optimized layouts for desktop and mobile
+- **Database persistence**: Cloudflare D1 with proper indexes and relationships
 
 All pages include responsive design, TypeScript support, and follow React Router v7 conventions.
+
+## Using the PKM System
+
+### Quick Start
+
+1. **Login** to the application
+2. Navigate to `/memory`
+3. **Create your first item**:
+   - Select type: Task, Note, or Thought
+   - Enter content
+   - (Optional) Add tags by clicking on them
+   - Press Enter or click "Add"
+
+4. **Create custom tags**:
+   - Click "Manage Tags" button
+   - Enter tag name and choose a color
+   - Click "Add"
+
+### Item Types
+
+- **Task** 📋: Things to do with completion tracking
+- **Note** 🧠: Reference material, documentation, ideas to remember
+- **Thought** 💡: Quick insights, fleeting ideas, journal entries
+
+### Features
+
+**Pinning**: Click the pin icon to keep important items at the top
+
+**Archiving**: Move completed or old items out of view without deleting
+
+**Filtering**:
+- Status: All / Pending / Completed
+- Type: All / Tasks / Notes / Thoughts
+- Tags: Click tags to filter
+- Search: Text search across all content
+
+**Editing**: Click the edit icon or press `e` to modify an item
+
+**Bulk actions**: Select multiple items for batch operations
+
+### Data Migration
+
+If you have existing todos in the old system, they were automatically migrated to the Memory system as tasks with their categories converted to tags.
 
 ## Project Management
 

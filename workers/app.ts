@@ -471,6 +471,477 @@ app.delete("/api/todos/:id", async (c) => {
 	}
 });
 
+// PKM System - Item API endpoints
+
+// Get all items for a user (with tags)
+app.get("/api/items/:userId", async (c) => {
+	try {
+		const userId = c.req.param("userId");
+
+		// Fetch items
+		const items = await c.env.DB.prepare(`
+			SELECT id, user_id, content, item_type, completed, priority, due_date, pinned, archived, created_at, updated_at
+			FROM items
+			WHERE user_id = ? AND archived = FALSE
+			ORDER BY pinned DESC, created_at DESC
+		`).bind(userId).all();
+
+		// Fetch all tags for this user
+		const itemsWithTags = await Promise.all(items.results.map(async (item: any) => {
+			const tags = await c.env.DB.prepare(`
+				SELECT t.id, t.user_id, t.name, t.color, t.created_at
+				FROM tags t
+				INNER JOIN item_tags it ON t.id = it.tag_id
+				WHERE it.item_id = ?
+			`).bind(item.id).all();
+
+			return {
+				...item,
+				tags: tags.results
+			};
+		}));
+
+		return c.json({
+			success: true,
+			data: itemsWithTags
+		});
+	} catch (error) {
+		console.error("Error fetching items:", error);
+		return c.json(
+			{ success: false, error: "Failed to fetch items" },
+			500
+		);
+	}
+});
+
+// Create new item (with tags)
+app.post("/api/items", async (c) => {
+	try {
+		const { userId, content, item_type, tags, priority, due_date, pinned } = await c.req.json();
+
+		if (!userId || !content) {
+			return c.json(
+				{ success: false, error: "User ID and content are required" },
+				400
+			);
+		}
+
+		// Insert item
+		const result = await c.env.DB.prepare(`
+			INSERT INTO items (user_id, content, item_type, priority, due_date, pinned)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`).bind(
+			userId,
+			content,
+			item_type || 'task',
+			priority || null,
+			due_date || null,
+			pinned || false
+		).run();
+
+		const itemId = result.meta.last_row_id;
+
+		// Add tags if provided
+		if (tags && Array.isArray(tags) && tags.length > 0) {
+			for (const tagId of tags) {
+				await c.env.DB.prepare(`
+					INSERT INTO item_tags (item_id, tag_id)
+					VALUES (?, ?)
+				`).bind(itemId, tagId).run();
+			}
+		}
+
+		// Fetch the newly created item with tags
+		const newItem = await c.env.DB.prepare(`
+			SELECT id, user_id, content, item_type, completed, priority, due_date, pinned, archived, created_at, updated_at
+			FROM items
+			WHERE id = ?
+		`).bind(itemId).first();
+
+		const itemTags = await c.env.DB.prepare(`
+			SELECT t.id, t.user_id, t.name, t.color, t.created_at
+			FROM tags t
+			INNER JOIN item_tags it ON t.id = it.tag_id
+			WHERE it.item_id = ?
+		`).bind(itemId).all();
+
+		return c.json({
+			success: true,
+			data: {
+				...newItem,
+				tags: itemTags.results
+			}
+		});
+	} catch (error) {
+		console.error("Error creating item:", error);
+		return c.json(
+			{ success: false, error: "Failed to create item" },
+			500
+		);
+	}
+});
+
+// Update item (including tags)
+app.put("/api/items/:id", async (c) => {
+	try {
+		const id = c.req.param("id");
+		const { content, item_type, completed, priority, due_date, pinned, archived, tags } = await c.req.json();
+
+		// Build dynamic update query
+		let updateFields = [];
+		let bindValues = [];
+
+		if (content !== undefined && content !== null) {
+			updateFields.push("content = ?");
+			bindValues.push(content);
+		}
+
+		if (item_type !== undefined && item_type !== null) {
+			updateFields.push("item_type = ?");
+			bindValues.push(item_type);
+		}
+
+		if (completed !== undefined) {
+			updateFields.push("completed = ?");
+			bindValues.push(completed);
+		}
+
+		if (priority !== undefined) {
+			updateFields.push("priority = ?");
+			bindValues.push(priority);
+		}
+
+		if (due_date !== undefined) {
+			updateFields.push("due_date = ?");
+			bindValues.push(due_date);
+		}
+
+		if (pinned !== undefined) {
+			updateFields.push("pinned = ?");
+			bindValues.push(pinned);
+		}
+
+		if (archived !== undefined) {
+			updateFields.push("archived = ?");
+			bindValues.push(archived);
+		}
+
+		// Always update the timestamp
+		updateFields.push("updated_at = CURRENT_TIMESTAMP");
+		bindValues.push(id);
+
+		// Execute update if there are fields to update
+		if (updateFields.length > 1) {
+			const updateQuery = `
+				UPDATE items
+				SET ${updateFields.join(", ")}
+				WHERE id = ?
+			`;
+			await c.env.DB.prepare(updateQuery).bind(...bindValues).run();
+		}
+
+		// Update tags if provided
+		if (tags !== undefined && Array.isArray(tags)) {
+			// Delete existing tags
+			await c.env.DB.prepare(`
+				DELETE FROM item_tags WHERE item_id = ?
+			`).bind(id).run();
+
+			// Add new tags
+			for (const tagId of tags) {
+				await c.env.DB.prepare(`
+					INSERT INTO item_tags (item_id, tag_id)
+					VALUES (?, ?)
+				`).bind(id, tagId).run();
+			}
+		}
+
+		// Fetch updated item with tags
+		const updatedItem = await c.env.DB.prepare(`
+			SELECT id, user_id, content, item_type, completed, priority, due_date, pinned, archived, created_at, updated_at
+			FROM items
+			WHERE id = ?
+		`).bind(id).first();
+
+		const itemTags = await c.env.DB.prepare(`
+			SELECT t.id, t.user_id, t.name, t.color, t.created_at
+			FROM tags t
+			INNER JOIN item_tags it ON t.id = it.tag_id
+			WHERE it.item_id = ?
+		`).bind(id).all();
+
+		return c.json({
+			success: true,
+			data: {
+				...updatedItem,
+				tags: itemTags.results
+			}
+		});
+	} catch (error) {
+		console.error("Error updating item:", error);
+		return c.json(
+			{ success: false, error: "Failed to update item" },
+			500
+		);
+	}
+});
+
+// Delete item
+app.delete("/api/items/:id", async (c) => {
+	try {
+		const id = c.req.param("id");
+
+		await c.env.DB.prepare(`
+			DELETE FROM items
+			WHERE id = ?
+		`).bind(id).run();
+
+		return c.json({
+			success: true,
+			message: "Item deleted successfully"
+		});
+	} catch (error) {
+		console.error("Error deleting item:", error);
+		return c.json(
+			{ success: false, error: "Failed to delete item" },
+			500
+		);
+	}
+});
+
+// Tag API endpoints
+
+// Get all tags for a user
+app.get("/api/tags/:userId", async (c) => {
+	try {
+		const userId = c.req.param("userId");
+
+		const result = await c.env.DB.prepare(`
+			SELECT id, user_id, name, color, created_at
+			FROM tags
+			WHERE user_id = ?
+			ORDER BY name ASC
+		`).bind(userId).all();
+
+		return c.json({
+			success: true,
+			data: result.results
+		});
+	} catch (error) {
+		console.error("Error fetching tags:", error);
+		return c.json(
+			{ success: false, error: "Failed to fetch tags" },
+			500
+		);
+	}
+});
+
+// Create new tag
+app.post("/api/tags", async (c) => {
+	try {
+		const { userId, name, color } = await c.req.json();
+
+		if (!userId || !name) {
+			return c.json(
+				{ success: false, error: "User ID and name are required" },
+				400
+			);
+		}
+
+		// Check if tag already exists for this user
+		const existing = await c.env.DB.prepare(`
+			SELECT id FROM tags WHERE user_id = ? AND name = ?
+		`).bind(userId, name).first();
+
+		if (existing) {
+			return c.json(
+				{ success: false, error: "Tag with this name already exists" },
+				409
+			);
+		}
+
+		const result = await c.env.DB.prepare(`
+			INSERT INTO tags (user_id, name, color)
+			VALUES (?, ?, ?)
+		`).bind(userId, name, color || '#6366f1').run();
+
+		const newTag = await c.env.DB.prepare(`
+			SELECT id, user_id, name, color, created_at
+			FROM tags
+			WHERE id = ?
+		`).bind(result.meta.last_row_id).first();
+
+		return c.json({
+			success: true,
+			data: newTag
+		});
+	} catch (error) {
+		console.error("Error creating tag:", error);
+		return c.json(
+			{ success: false, error: "Failed to create tag" },
+			500
+		);
+	}
+});
+
+// Update tag
+app.put("/api/tags/:id", async (c) => {
+	try {
+		const id = c.req.param("id");
+		const { name, color } = await c.req.json();
+
+		let updateFields = [];
+		let bindValues = [];
+
+		if (name !== undefined && name !== null) {
+			updateFields.push("name = ?");
+			bindValues.push(name);
+		}
+
+		if (color !== undefined && color !== null) {
+			updateFields.push("color = ?");
+			bindValues.push(color);
+		}
+
+		if (updateFields.length > 0) {
+			bindValues.push(id);
+			const updateQuery = `
+				UPDATE tags
+				SET ${updateFields.join(", ")}
+				WHERE id = ?
+			`;
+			await c.env.DB.prepare(updateQuery).bind(...bindValues).run();
+		}
+
+		const updatedTag = await c.env.DB.prepare(`
+			SELECT id, user_id, name, color, created_at
+			FROM tags
+			WHERE id = ?
+		`).bind(id).first();
+
+		return c.json({
+			success: true,
+			data: updatedTag
+		});
+	} catch (error) {
+		console.error("Error updating tag:", error);
+		return c.json(
+			{ success: false, error: "Failed to update tag" },
+			500
+		);
+	}
+});
+
+// Delete tag
+app.delete("/api/tags/:id", async (c) => {
+	try {
+		const id = c.req.param("id");
+
+		// item_tags will be automatically deleted due to CASCADE
+		await c.env.DB.prepare(`
+			DELETE FROM tags
+			WHERE id = ?
+		`).bind(id).run();
+
+		return c.json({
+			success: true,
+			message: "Tag deleted successfully"
+		});
+	} catch (error) {
+		console.error("Error deleting tag:", error);
+		return c.json(
+			{ success: false, error: "Failed to delete tag" },
+			500
+		);
+	}
+});
+
+// Advanced search endpoint
+app.get("/api/items/search/:userId", async (c) => {
+	try {
+		const userId = c.req.param("userId");
+		const itemType = c.req.query("item_type");
+		const completed = c.req.query("completed");
+		const archived = c.req.query("archived");
+		const pinned = c.req.query("pinned");
+		const search = c.req.query("search");
+		const tagIds = c.req.query("tags"); // comma-separated tag IDs
+
+		let query = `
+			SELECT DISTINCT i.id, i.user_id, i.content, i.item_type, i.completed, i.priority, i.due_date, i.pinned, i.archived, i.created_at, i.updated_at
+			FROM items i
+		`;
+
+		let conditions = ["i.user_id = ?"];
+		let bindValues: any[] = [userId];
+
+		// Join with tags if filtering by tags
+		if (tagIds) {
+			query += ` INNER JOIN item_tags it ON i.id = it.item_id`;
+			const tagIdArray = tagIds.split(',').map(id => parseInt(id));
+			conditions.push(`it.tag_id IN (${tagIdArray.map(() => '?').join(',')})`);
+			bindValues.push(...tagIdArray);
+		}
+
+		// Add filters
+		if (itemType && itemType !== 'all') {
+			conditions.push("i.item_type = ?");
+			bindValues.push(itemType);
+		}
+
+		if (completed !== undefined && completed !== 'all') {
+			conditions.push("i.completed = ?");
+			bindValues.push(completed === 'true' ? 1 : 0);
+		}
+
+		if (archived !== undefined) {
+			conditions.push("i.archived = ?");
+			bindValues.push(archived === 'true' ? 1 : 0);
+		}
+
+		if (pinned !== undefined) {
+			conditions.push("i.pinned = ?");
+			bindValues.push(pinned === 'true' ? 1 : 0);
+		}
+
+		if (search) {
+			conditions.push("i.content LIKE ?");
+			bindValues.push(`%${search}%`);
+		}
+
+		query += ` WHERE ${conditions.join(" AND ")}`;
+		query += ` ORDER BY i.pinned DESC, i.created_at DESC`;
+
+		const items = await c.env.DB.prepare(query).bind(...bindValues).all();
+
+		// Fetch tags for each item
+		const itemsWithTags = await Promise.all(items.results.map(async (item: any) => {
+			const tags = await c.env.DB.prepare(`
+				SELECT t.id, t.user_id, t.name, t.color, t.created_at
+				FROM tags t
+				INNER JOIN item_tags it ON t.id = it.tag_id
+				WHERE it.item_id = ?
+			`).bind(item.id).all();
+
+			return {
+				...item,
+				tags: tags.results
+			};
+		}));
+
+		return c.json({
+			success: true,
+			data: itemsWithTags
+		});
+	} catch (error) {
+		console.error("Error searching items:", error);
+		return c.json(
+			{ success: false, error: "Failed to search items" },
+			500
+		);
+	}
+});
+
 app.get("*", (c) => {
 	const requestHandler = createRequestHandler(
 		() => import("virtual:react-router/server-build"),

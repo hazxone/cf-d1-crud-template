@@ -5,4 +5,5 @@ export default [
   route("login", "routes/login.tsx"),
   route("test-page", "routes/test-page.tsx"),
   route("todo", "routes/todo.tsx"),
+  route("memory", "routes/memory.tsx"), // New PKM system
 ] satisfies RouteConfig;
