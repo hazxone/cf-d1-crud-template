@@ -110,7 +110,7 @@ export default function MemoryPage({ }: Route.ComponentProps) {
     if (!currentUser) return;
 
     try {
-      const response = await fetch(`http://localhost:5173/api/items/${currentUser.id}`);
+      const response = await fetch(`/api/items/${currentUser.id}`);
       const data = await response.json() as ApiResponse<ItemWithTags[]>;
 
       if (data.success && data.data) {
@@ -128,7 +128,7 @@ export default function MemoryPage({ }: Route.ComponentProps) {
     if (!currentUser) return;
 
     try {
-      const response = await fetch(`http://localhost:5173/api/tags/${currentUser.id}`);
+      const response = await fetch(`/api/tags/${currentUser.id}`);
       const data = await response.json() as ApiResponse<Tag[]>;
 
       if (data.success && data.data) {
@@ -148,7 +148,7 @@ export default function MemoryPage({ }: Route.ComponentProps) {
     try {
       if (editingItem) {
         // Update existing item
-        const response = await fetch(`http://localhost:5173/api/items/${editingItem.id}`, {
+        const response = await fetch(`/api/items/${editingItem.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -169,7 +169,7 @@ export default function MemoryPage({ }: Route.ComponentProps) {
         }
       } else {
         // Create new item
-        const response = await fetch("http://localhost:5173/api/items", {
+        const response = await fetch("/api/items", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -203,7 +203,7 @@ export default function MemoryPage({ }: Route.ComponentProps) {
 
   const handleToggleComplete = async (item: ItemWithTags) => {
     try {
-      const response = await fetch(`http://localhost:5173/api/items/${item.id}`, {
+      const response = await fetch(`/api/items/${item.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completed: !item.completed }),
@@ -225,7 +225,7 @@ export default function MemoryPage({ }: Route.ComponentProps) {
 
   const handleTogglePin = async (item: ItemWithTags) => {
     try {
-      const response = await fetch(`http://localhost:5173/api/items/${item.id}`, {
+      const response = await fetch(`/api/items/${item.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pinned: !item.pinned }),
@@ -247,7 +247,7 @@ export default function MemoryPage({ }: Route.ComponentProps) {
 
   const handleArchive = async (item: ItemWithTags) => {
     try {
-      const response = await fetch(`http://localhost:5173/api/items/${item.id}`, {
+      const response = await fetch(`/api/items/${item.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ archived: true }),
@@ -271,7 +271,7 @@ export default function MemoryPage({ }: Route.ComponentProps) {
     if (!itemToDelete) return;
 
     try {
-      const response = await fetch(`http://localhost:5173/api/items/${itemToDelete.id}`, {
+      const response = await fetch(`/api/items/${itemToDelete.id}`, {
         method: "DELETE",
       });
 
@@ -303,7 +303,7 @@ export default function MemoryPage({ }: Route.ComponentProps) {
     if (!currentUser || !newTagName.trim()) return;
 
     try {
-      const response = await fetch("http://localhost:5173/api/tags", {
+      const response = await fetch("/api/tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -332,7 +332,7 @@ export default function MemoryPage({ }: Route.ComponentProps) {
 
   const handleDeleteTag = async (tagId: number) => {
     try {
-      const response = await fetch(`http://localhost:5173/api/tags/${tagId}`, {
+      const response = await fetch(`/api/tags/${tagId}`, {
         method: "DELETE",
       });
 
