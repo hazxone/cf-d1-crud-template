@@ -18,7 +18,17 @@ interface RouterContext {
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootComponent,
   errorComponent: ErrorComponent,
+  notFoundComponent: NotFoundComponent,
 })
+
+function NotFoundComponent() {
+  return (
+    <main className="pt-16 p-4 container mx-auto">
+      <h1 className="text-2xl font-bold mb-4">404 - Not Found</h1>
+      <p className="text-muted-foreground">The page you're looking for doesn't exist.</p>
+    </main>
+  )
+}
 
 function RootComponent() {
   return (
