@@ -1,5 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { ProductsTable } from '@/components/products-table'
+import { Button } from '@/components/ui/button'
 
 export const Route = createFileRoute('/')({
   // Loader function with typed context
@@ -29,11 +30,18 @@ function HomePage() {
     <div className="container mx-auto py-8 px-4">
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight">Product Management</h1>
-          <p className="text-muted-foreground mt-2">
-            A full-stack CRUD template built with TanStack Router, Hono, and Cloudflare D1 database
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight">Product Management</h1>
+            <p className="text-muted-foreground mt-2">
+              A full-stack CRUD template built with TanStack Router, Hono, and Cloudflare D1 database
+            </p>
+          </div>
+          <Button asChild>
+            <Link to="/login">
+              Login
+            </Link>
+          </Button>
         </div>
 
         {/* Info Card */}
