@@ -47,23 +47,6 @@ function HomePage() {
             <p className="text-muted-foreground mt-2">
               A full-stack CRUD template built with TanStack Router, Hono, and Cloudflare D1 database
             </p>
-            {isPending && (
-              <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-md">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Loading session...</p>
-              </div>
-            )}
-            {session?.user && (
-              <div className="mt-3 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
-                <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                  Logged in as: <span className="font-semibold">{session.user.name || session.user.email}</span>
-                </p>
-                {session.user.email && (
-                  <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                    {session.user.email}
-                  </p>
-                )}
-              </div>
-            )}
           </div>
           {session?.user ? (
             <DropdownMenu>
