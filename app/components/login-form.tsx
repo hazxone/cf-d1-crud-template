@@ -7,12 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signIn, signUp } from "@/lib/auth-client";
+import { useNavigate } from "@tanstack/react-router";
 
-interface LoginFormProps {
-  onLoginSuccess: (user: any) => void;
-}
-
-export function LoginForm({ onLoginSuccess }: LoginFormProps) {
+export function LoginForm() {
+  const navigate = useNavigate()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -39,26 +37,26 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
           email: formData.email,
           password: formData.password,
           name: formData.name,
-          callbackURL: "/",
         });
 
         if (error) {
           setError(error.message || "Sign up failed");
         } else if (data) {
-          onLoginSuccess(data.user);
+          // Successfully signed up, redirect to home
+          navigate({ to: '/' });
         }
       } else {
         // Sign in with BetterAuth
         const { data, error } = await signIn.email({
           email: formData.email,
           password: formData.password,
-          callbackURL: "/",
         });
 
         if (error) {
           setError(error.message || "Login failed");
         } else if (data) {
-          onLoginSuccess(data.user);
+          // Successfully signed in, redirect to home
+          navigate({ to: '/' });
         }
       }
     } catch (err) {
