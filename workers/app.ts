@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { Context as HonoContext } from "hono";
+import { createAuth } from "./auth";
 
 interface Env {
 	DB: D1Database;
@@ -110,6 +111,24 @@ async function verifyPassword(password: string, hashedPassword: string): Promise
 }
 
 const app = new Hono<{ Bindings: Env }>();
+
+// BetterAuth integration
+// Mount BetterAuth handlers for authentication
+app.use("/api/auth/*", async (c, next) => {
+	// Create auth instance with D1 binding from request context
+	const auth = createAuth(c.env.DB);
+
+	// Handle BetterAuth requests
+	const response = await auth.handler(c.req.raw);
+
+	// If BetterAuth handled the request, return its response
+	if (response) {
+		return response;
+	}
+
+	// Otherwise, continue to next handler (for custom auth endpoints)
+	await next();
+});
 
 // Add more routes here
 

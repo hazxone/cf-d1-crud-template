@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { signIn, signUp } from "@/lib/auth-client";
 
 interface LoginFormProps {
   onLoginSuccess: (user: any) => void;
@@ -15,9 +16,11 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    name: "", // For signup
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSignUp, setIsSignUp] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -30,23 +33,37 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     setError(null);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      if (isSignUp) {
+        // Sign up with BetterAuth
+        const { data, error } = await signUp.email({
+          email: formData.email,
+          password: formData.password,
+          name: formData.name,
+          callbackURL: "/todo",
+        });
 
-      const data = await response.json() as { success: boolean; data?: any; error?: string };
-
-      if (data.success && data.data) {
-        onLoginSuccess(data.data);
+        if (error) {
+          setError(error.message || "Sign up failed");
+        } else if (data) {
+          onLoginSuccess(data.user);
+        }
       } else {
-        setError(data.error || "Login failed");
+        // Sign in with BetterAuth
+        const { data, error } = await signIn.email({
+          email: formData.email,
+          password: formData.password,
+          callbackURL: "/todo",
+        });
+
+        if (error) {
+          setError(error.message || "Login failed");
+        } else if (data) {
+          onLoginSuccess(data.user);
+        }
       }
     } catch (err) {
-      setError("Network error occurred");
+      setError("An unexpected error occurred");
+      console.error("Auth error:", err);
     } finally {
       setLoading(false);
     }
@@ -55,9 +72,13 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">Sign In</CardTitle>
+        <CardTitle className="text-2xl font-bold text-center">
+          {isSignUp ? "Create Account" : "Sign In"}
+        </CardTitle>
         <CardDescription className="text-center">
-          Enter your email and password to access your account
+          {isSignUp
+            ? "Enter your details to create a new account"
+            : "Enter your email and password to access your account"}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -66,6 +87,21 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
+          )}
+
+          {isSignUp && (
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                name="name"
+                type="text"
+                placeholder="Your full name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+              />
+            </div>
           )}
 
           <div className="space-y-2">
@@ -99,16 +135,29 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
             className="w-full"
             disabled={loading}
           >
-            {loading ? "Signing In..." : "Sign In"}
+            {loading
+              ? isSignUp
+                ? "Creating Account..."
+                : "Signing In..."
+              : isSignUp
+              ? "Create Account"
+              : "Sign In"}
           </Button>
         </form>
 
         <div className="mt-4 text-center text-sm">
           <p className="text-muted-foreground">
-            Don't have an account?{" "}
-            <a href="/register" className="text-primary hover:underline">
-              Sign up here
-            </a>
+            {isSignUp ? "Already have an account? " : "Don't have an account? "}
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError(null);
+              }}
+              className="text-primary hover:underline"
+            >
+              {isSignUp ? "Sign in here" : "Sign up here"}
+            </button>
           </p>
         </div>
       </CardContent>
