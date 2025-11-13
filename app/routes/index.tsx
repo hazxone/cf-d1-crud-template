@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { ProductsTable } from '@/components/products-table'
 import { Button } from '@/components/ui/button'
+import { useState, useEffect } from 'react'
 
 export const Route = createFileRoute('/')({
   // Loader function with typed context
@@ -25,6 +26,18 @@ export const Route = createFileRoute('/')({
 
 function HomePage() {
   const { message } = Route.useLoaderData()
+  const [user, setUser] = useState<any>(null)
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('currentUser')
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser))
+      } catch (error) {
+        localStorage.removeItem('currentUser')
+      }
+    }
+  }, [])
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -36,6 +49,18 @@ function HomePage() {
             <p className="text-muted-foreground mt-2">
               A full-stack CRUD template built with TanStack Router, Hono, and Cloudflare D1 database
             </p>
+            {user && (
+              <div className="mt-3 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
+                <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                  Logged in as: <span className="font-semibold">{user.first_name || user.username}</span>
+                </p>
+                {user.email && (
+                  <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                    {user.email}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <Button asChild>
             <Link to="/login">
