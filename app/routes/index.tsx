@@ -1,7 +1,16 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { ProductsTable } from '@/components/products-table'
 import { Button } from '@/components/ui/button'
-import { useSession } from '@/lib/auth-client'
+import { useSession, signOut } from '@/lib/auth-client'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { LogOut, User } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   // Loader function with typed context
@@ -56,11 +65,37 @@ function HomePage() {
               </div>
             )}
           </div>
-          <Button asChild>
-            <Link to="/login">
-              Login
-            </Link>
-          </Button>
+          {session?.user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  {session.user.name || session.user.email}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+                  {session.user.email}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => signOut()}
+                  className="text-red-600 focus:text-red-600 cursor-pointer"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button asChild>
+              <Link to="/login">
+                Login
+              </Link>
+            </Button>
+          )}
         </div>
 
         {/* Info Card */}
