@@ -50,7 +50,9 @@ export function ProductsTable() {
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -93,11 +95,16 @@ export function ProductsTable() {
     fetchProducts();
   }, [searchTerm, selectedCategory]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
+  const handleDelete = (product: Product) => {
+    setDeletingProduct(product);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingProduct) return;
 
     try {
-      const response = await fetch(`/api/products/${id}`, {
+      const response = await fetch(`/api/products/${deletingProduct.id}`, {
         method: "DELETE",
       });
       const data = await response.json();
@@ -107,6 +114,8 @@ export function ProductsTable() {
           title: "Success",
           description: "Product deleted successfully",
         });
+        setIsDeleteDialogOpen(false);
+        setDeletingProduct(null);
         fetchProducts();
       }
     } catch (error) {
@@ -279,7 +288,7 @@ export function ProductsTable() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDelete(product.id)}
+                        onClick={() => handleDelete(product)}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -383,6 +392,32 @@ export function ProductsTable() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Product</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{deletingProduct?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setDeletingProduct(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
