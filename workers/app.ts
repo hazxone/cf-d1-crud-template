@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { createRequestHandler } from "react-router";
 import type { Context as HonoContext } from "hono";
 
 interface Env {
@@ -1161,15 +1160,18 @@ app.delete("/api/products/:id", async (c) => {
 	}
 });
 
-app.get("*", (c) => {
-	const requestHandler = createRequestHandler(
-		() => import("virtual:react-router/server-build"),
-		import.meta.env.MODE,
-	);
+app.get("*", async (c) => {
+	// Import the server entry point for TanStack Router
+	// @ts-ignore - Vite will handle this import during build
+	const { default: handleRequest } = await import("../app/entry.server");
 
-	return requestHandler(c.req.raw, {
-		cloudflare: { env: c.env, ctx: c.executionCtx },
-	});
+	// Pass the request and Cloudflare context to TanStack Router
+	return handleRequest(
+		c.req.raw,
+		200,
+		new Headers(),
+		{ env: c.env, ctx: c.executionCtx },
+	);
 });
 
 export default app;

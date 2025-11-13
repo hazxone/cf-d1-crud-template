@@ -1,43 +1,55 @@
-import type { AppLoadContext, EntryContext } from "react-router";
-import { ServerRouter } from "react-router";
-import { isbot } from "isbot";
-import { renderToReadableStream } from "react-dom/server";
+import { renderToString } from 'react-dom/server'
+import { RouterProvider } from '@tanstack/react-router'
+import { isbot } from 'isbot'
+import { createRouter } from './router'
+import { createMemoryHistory } from '@tanstack/react-router'
 
 export default async function handleRequest(
-	request: Request,
-	responseStatusCode: number,
-	responseHeaders: Headers,
-	routerContext: EntryContext,
-	_loadContext: AppLoadContext,
+  request: Request,
+  responseStatusCode: number,
+  responseHeaders: Headers,
+  cloudflareContext: any,
 ) {
-	let shellRendered = false;
-	const userAgent = request.headers.get("user-agent");
+  // Create a memory history for SSR
+  const url = new URL(request.url)
+  const memoryHistory = createMemoryHistory({
+    initialEntries: [url.pathname + url.search],
+  })
 
-	const body = await renderToReadableStream(
-		<ServerRouter context={routerContext} url={request.url} />,
-		{
-			onError(error: unknown) {
-				responseStatusCode = 500;
-				// Log streaming rendering errors from inside the shell.  Don't log
-				// errors encountered during initial shell rendering since they'll
-				// reject and get logged in handleDocumentRequest.
-				if (shellRendered) {
-					console.error(error);
-				}
-			},
-		},
-	);
-	shellRendered = true;
+  // Create a new router instance for each request
+  const router = createRouter()
 
-	// Ensure requests from bots and SPA Mode renders wait for all content to load before responding
-	// https://react.dev/reference/react-dom/server/renderToPipeableStream#waiting-for-all-content-to-load-for-crawlers-and-static-generation
-	if ((userAgent && isbot(userAgent)) || routerContext.isSpaMode) {
-		await body.allReady;
-	}
+  // Update the router with memory history and context
+  router.update({
+    history: memoryHistory,
+    context: {
+      cloudflare: cloudflareContext,
+    },
+  })
 
-	responseHeaders.set("Content-Type", "text/html");
-	return new Response(body, {
-		headers: responseHeaders,
-		status: responseStatusCode,
-	});
+  // Wait for the router to load
+  await router.load()
+
+  // Render the app to string
+  const html = renderToString(<RouterProvider router={router} />)
+
+  // Inject the HTML into the shell
+  const fullHtml = `
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  <body>
+    <div id="root">${html}</div>
+  </body>
+</html>
+  `.trim()
+
+  responseHeaders.set('Content-Type', 'text/html')
+  return new Response(fullHtml, {
+    headers: responseHeaders,
+    status: responseStatusCode,
+  })
 }
