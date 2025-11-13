@@ -39,7 +39,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
           email: formData.email,
           password: formData.password,
           name: formData.name,
-          callbackURL: "/todo",
+          callbackURL: "/",
         });
 
         if (error) {
@@ -52,7 +52,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
         const { data, error } = await signIn.email({
           email: formData.email,
           password: formData.password,
-          callbackURL: "/todo",
+          callbackURL: "/",
         });
 
         if (error) {
